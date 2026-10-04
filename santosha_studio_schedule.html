@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="bg">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>Santosha Studio — свободни зали</title>
+  <style>
+    :root {
+      --ink:#233129; --muted:#69766e; --line:#dce4de; --paper:#f5f7f4;
+      --green:#d9f4df; --green-2:#bce8c7; --green-3:#91d7a3; --busy:#f4dfda;
+    }
+    * { box-sizing:border-box; }
+    html, body { margin:0; width:100%; height:100%; overflow:hidden; font-family:Inter, system-ui, sans-serif; color:var(--ink); background:var(--paper); }
+    body { display:grid; grid-template-rows:42px minmax(0, 1fr); height:100dvh; padding:6px; gap:4px; }
+    header { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+    h1 { margin:0; font-size:clamp(18px, 2vw, 28px); }
+    .subtitle { margin:2px 0 0; color:var(--muted); font-size:12px; }
+    .legend { display:flex; gap:10px; align-items:center; font-size:11px; white-space:nowrap; }
+    .key { display:inline-flex; align-items:center; gap:5px; }
+    .swatch { width:12px; height:12px; border:1px solid #b9c7bd; border-radius:3px; background:var(--green); }
+    .swatch.busy { background:var(--busy); }
+    .calendar { width:100%; height:100%; min-width:0; min-height:0; table-layout:fixed; border-collapse:separate; border-spacing:0; border:1px solid var(--line); border-radius:8px; overflow:hidden; background:white; }
+    .calendar th, .calendar td { min-width:0; height:auto; border-right:1px solid var(--line); border-bottom:1px solid var(--line); padding:0; overflow:hidden; }
+    .calendar th:first-child { width:44px; }
+    .calendar thead { height:28px; }
+    .calendar tbody tr { height:calc((100% - 28px) / 14); }
+    .day { text-align:center; vertical-align:middle; font-size:11px; font-weight:750; background:#eef2ee; }
+    .day small { display:block; color:var(--muted); font-size:9px; font-weight:600; }
+    .time { text-align:center; vertical-align:middle; color:var(--muted); background:#f8faf8; font-size:10px; font-variant-numeric:tabular-nums; }
+    button.slot { appearance:none; display:block; width:100%; height:100%; min-height:100%; padding:1px 4px; border:0; text-align:left; color:var(--ink); font:inherit; cursor:pointer; overflow:hidden; }
+    .slot.free-1 { background:var(--green); }
+    .slot.free-2 { background:var(--green-2); }
+    .slot.free-3 { background:var(--green-3); }
+    .slot.busy { background:var(--busy); color:#815045; }
+    .slot.selected { position:relative; background:#2f65c7; color:white; box-shadow:inset 0 0 0 3px #17499f; }
+    .slot.selected .status { color:#dce8ff; }
+    .slot.selected::after { content:"✓"; position:absolute; top:2px; right:4px; color:white; font-size:13px; font-weight:900; }
+    .slot:hover, .slot:focus-visible { outline:2px solid #286b3c; outline-offset:-2px; z-index:1; }
+    .rooms { display:block; font-size:clamp(8px, .68vw, 10px); line-height:1.05; font-weight:750; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .status { display:block; margin-top:2px; color:#57645c; font-size:clamp(7px, .58vw, 9px); line-height:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    dialog { width:min(620px, calc(100vw - 30px)); border:0; border-radius:14px; padding:0; box-shadow:0 18px 60px #15271d55; }
+    dialog::backdrop { background:#17231c88; }
+    .dialog-head { display:flex; justify-content:space-between; align-items:center; padding:16px 18px 10px; border-bottom:1px solid var(--line); }
+    .dialog-head h2 { margin:0; font-size:18px; }
+    .close { border:0; border-radius:8px; background:#edf1ed; padding:7px 10px; cursor:pointer; }
+    .dialog-body { padding:14px 18px 18px; }
+    .availability { margin:0 0 12px; padding:10px 12px; border-radius:8px; background:var(--green); font-weight:700; }
+    .selection-toggle { width:100%; margin:0 0 12px; padding:10px 12px; border:1px solid #2f65c7; border-radius:8px; background:white; color:#17499f; font-weight:750; cursor:pointer; }
+    .selection-toggle[aria-pressed="true"] { background:#2f65c7; color:white; }
+    .class-list { margin:0; padding:0; list-style:none; display:grid; gap:8px; }
+    .class-list li { border-left:4px solid #9aa79e; padding:5px 8px; background:#f5f7f5; font-size:13px; }
+    .cancelled { opacity:.62; text-decoration:line-through; }
+    .note { color:#875b27; font-size:11px; }
+    @media (max-width:700px) {
+      body { grid-template-rows:34px minmax(0, 1fr); padding:3px; gap:2px; }
+      h1 { font-size:14px; }
+      .subtitle { font-size:8px; }
+      .legend { display:none; }
+      .calendar th:first-child { width:32px; }
+      .calendar thead { height:24px; }
+      .calendar tbody tr { height:calc((100% - 24px) / 14); }
+      button.slot { padding:2px; }
+      .day { font-size:7px; }
+      .day small, .status { font-size:6px; }
+      .time, .rooms { font-size:7px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Свободни зали · Santosha Studio</h1>
+      <p class="subtitle">Седмица 28.09–04.10 · работно време 07:00–21:00 · показва и залите, свободни от :30</p>
+    </div>
+    <div class="legend" aria-label="Легенда">
+      <span class="key"><i class="swatch"></i> има свободна зала</span>
+      <span class="key"><i class="swatch busy"></i> всички са заети</span>
+    </div>
+  </header>
+
+  <table class="calendar" id="calendar" aria-label="Седмичен календар на свободните зали">
+    <thead><tr id="days-row"></tr></thead>
+    <tbody id="calendar-body"></tbody>
+  </table>
+
+  <dialog id="details">
+    <div class="dialog-head">
+      <h2 id="details-title"></h2>
+      <button class="close" type="button" aria-label="Затвори">Затвори</button>
+    </div>
+    <div class="dialog-body">
+      <p class="availability" id="details-free"></p>
+      <button class="selection-toggle" id="selection-toggle" type="button" aria-pressed="false">Маркирай този ден и час</button>
+      <ul class="class-list" id="details-classes"></ul>
+    </div>
+  </dialog>
+
+  <script>
+    const rooms = ["Budha", "Chandra", "Surya"];
+    const SELECTIONS_KEY = "antoshaStudioSelectedSlots.v1";
+    const selectedSlots = (() => {
+      try {
+        return new Set(JSON.parse(localStorage.getItem(SELECTIONS_KEY) || "[]"));
+      } catch {
+        return new Set();
+      }
+    })();
+    let activeSelection = null;
+    const days = [
+      ["Понеделник","28.09"], ["Вторник","29.09"], ["Сряда","30.09"],
+      ["Четвъртък","01.10"], ["Петък","02.10"], ["Събота","03.10"], ["Неделя","04.10"]
+    ];
+
+    const schedule = [
+      [0,"08:30","09:30","Йога за лице и лимфен дренаж","Chandra","Даниела Лекушева",""],
+      [0,"10:00","11:00","Хатха катона йога","Budha","Боряна Йорданова","НОВ КЛАС"],
+      [0,"10:15","11:15","Терапевтична гимнастика за здраве / дами 50+","Surya","Валентина Костова","Средно ниво"],
+      [0,"11:30","12:30","Терапевтична гимнастика за здраве / дами 50+","Chandra","Валентина Костова","Начинаещи"],
+      [0,"12:30","13:30","Хатха йога","Surya","Илиана",""],
+      [0,"17:30","18:30","Хатха йога","Surya","Даниела Лекушева",""],
+      [0,"18:00","19:00","Виняса флоу","Budha","Ивелина Иванова",""],
+      [0,"18:15","19:15","Хатха йога","Chandra","Нитя (Нина Сотирова)",""],
+      [0,"18:30","19:30","Йога за начинаещи","Surya","Майтрей",""],
+      [0,"19:00","20:00","Пауър йога","Budha","Стаси",""],
+      [0,"19:15","20:15","Виняса флоу","Chandra","Николай Йоргов (Wizard)",""],
+      [0,"19:30","20:30","Пилатес","Surya","Боряна Петрова",""],
+      [0,"20:00","21:00","Ин йога","Budha","Лаура Славов",""],
+
+      [1,"07:30","09:00","Айенгар йога","Chandra","Екатерина Минкова",""],
+      [1,"08:00","09:00","Хатха флоу","Surya","Илиана",""],
+      [1,"10:15","11:15","Терапевтична гимнастика за здраве / дами 50+","Surya","Валентина Костова","НОВ КЛАС от 29.09 · Средно ниво"],
+      [1,"11:30","12:30","Терапевтична гимнастика за здраве / дами 50+","Chandra","Валентина Костова","НОВ КЛАС от 29.09 · Начинаещи"],
+      [1,"12:00","13:00","Хатха йога","Surya","Майтрей",""],
+      [1,"17:15","18:15","Йога флоу","Budha","Яна Здравкова",""],
+      [1,"18:00","19:00","Хатха йога","Surya","Нитя (Нина Сотирова)",""],
+      [1,"18:15","19:15","Йога терапия","Budha","Нина Денина",""],
+      [1,"18:30","20:00","Айенгар йога","Chandra","Екатерина Минкова","English / Bulgarian class"],
+      [1,"19:00","20:00","Виняса флоу","Surya","Нитя (Нина Сотирова)",""],
+      [1,"19:15","20:15","Йога и медитация","Budha","Сутра (Вени)","На 29.09 замества Дургаджьоти (Деси Маринова)"],
+
+      [2,"08:30","09:30","Йога и мобилност","Surya","Жаклина Жекова | Дхарма",""],
+      [2,"10:00","11:00","Хатха катона йога","Budha","Боряна Йорданова","На 30.09 практиката няма да се състои",true],
+      [2,"10:15","11:15","Терапевтична гимнастика за здраве / дами 50+","Surya","Валентина Костова","Средно ниво"],
+      [2,"11:30","12:30","Терапевтична гимнастика за здраве / дами 50+","Chandra","Валентина Костова","Начинаещи"],
+      [2,"12:00","13:00","Satria (индонезийска) йога","Chandra","Любомир Газибаров",""],
+      [2,"12:30","13:30","Хатха йога","Surya","Илиана",""],
+      [2,"17:00","18:00","Катона йога","Budha","Боряна Йорданова",""],
+      [2,"17:15","18:15","Satria (индонезийска) йога","Chandra","Любомир Газибаров",""],
+      [2,"17:30","18:30","Хатха йога","Surya","Деа",""],
+      [2,"18:00","19:00","Ресторативно движение","Budha","Румяна",""],
+      [2,"18:15","19:15","Йога за начинаещи","Chandra","Сутра (Вени)",""],
+      [2,"18:30","19:30","Хатха флоу","Surya","Нитя (Нина Сотирова)",""],
+      [2,"19:15","20:15","Виняса флоу","Chandra","Николай Йоргов (Wizard)",""],
+      [2,"19:15","20:15","Restorative Yoga and Meditation","Budha","Сутра (Вени)",""],
+      [2,"19:30","20:30","Пауър йога","Surya","Стаси",""],
+
+      [3,"07:30","09:00","Айенгар йога","Chandra","Екатерина Минкова",""],
+      [3,"08:00","09:00","Хатха флоу","Surya","Илиана",""],
+      [3,"10:00","11:00","Пилатес и стречинг","Chandra","Елена Стоянова",""],
+      [3,"10:15","11:15","Терапевтична гимнастика за здраве / дами 50+","Surya","Валентина Костова","Средно ниво"],
+      [3,"11:30","12:30","Терапевтична гимнастика за здраве / дами 50+","Chandra","Валентина Костова","Начинаещи"],
+      [3,"12:00","13:00","Хатха йога","Surya","Майтрей",""],
+      [3,"17:15","18:15","Йога флоу","Surya","Доротея Чешанкова",""],
+      [3,"18:00","19:00","Йога за всеки","Budha","Кристина Николова",""],
+      [3,"18:15","19:15","Хатха йога","Surya","Нитя (Нина Сотирова)",""],
+      [3,"18:30","20:00","Айенгар йога","Chandra","Екатерина Минкова","English / Bulgarian class"],
+      [3,"19:15","20:30","Ин йога + йога нидра","Surya","Майтрей",""],
+      [3,"19:15","20:15","Виняса флоу","Budha","Николай Михайлов",""],
+      [3,"20:00","21:00","Дихателни практики за освобождаване на стреса (breathwork)","Chandra","Явор Пинев",""],
+
+      [4,"08:00","09:00","Зареждаща сутрешна йога","Budha","Теди Маринова","На 02.10 ще води…"],
+      [4,"10:00","11:00","Пилатес и стречинг","Chandra","Елена Стоянова",""],
+      [4,"12:00","13:00","Stretch and Relax","Budha","Achyutananda",""],
+      [4,"12:30","13:30","Хатха йога","Surya","Нина Денина",""],
+      [4,"17:00","18:00","Relax and Release","Budha","Achyutananda","Class in English"],
+      [4,"17:30","18:30","Хатха йога","Surya","Даниела Лекушева",""],
+      [4,"17:30","18:30","Satria (индонезийска) йога","Chandra","Любомир Газибаров",""],
+      [4,"18:15","19:15","Йога и майндфулнес","Budha","Ивелина Иванова",""],
+      [4,"18:30","19:30","Йога терапия","Chandra","Нина Денина",""],
+      [4,"18:30","19:30","Виняса флоу","Surya","Илиана",""],
+      [4,"19:30","20:30","Пилатес","Chandra","Боряна Петрова",""],
+      [4,"19:30","21:00","Даоистки вътрешни изкуства","Surya","Ивайло Димитров",""],
+
+      [5,"08:00","10:00","Level Up – Айенгар йога интензив","Chandra","Екатерина Минкова","На 03.10 практиката няма да се състои",true],
+      [5,"10:00","11:30","Йога и медитация","Surya","Майтрей",""],
+      [5,"11:00","12:00","Пауър йога","Chandra","Стаси",""],
+      [5,"11:00","12:15","Satria (индонезийска) йога","Budha","Любомир Газибаров",""],
+      [5,"11:30","12:30","Виняса флоу","Surya","Илиана",""],
+      [5,"12:00","13:00","Танцова практика: Дълбоко издишване","Chandra","Маги Рей","НОВ КЛАС от 03.10"],
+      [5,"13:15","14:15","Катона йога","Budha","Боряна Йорданова",""],
+      [5,"14:00","15:00","Ресторативно движение","Surya","Румяна",""],
+      [5,"15:00","16:00","Виняса флоу","Surya","Даниела Лекушева",""],
+      [5,"16:00","17:00","Пауър виняса флоу","Chandra","Стефани Пашова",""],
+
+      [6,"10:00","11:00","Functional Body Dance","Chandra","Теди Петкова",""],
+      [6,"11:00","12:00","Хатха флоу","Surya","Нитя (Нина Сотирова)",""],
+      [6,"11:00","12:00","Йога за деца","Chandra","Наталия",""],
+      [6,"11:30","13:00","Хатха йога","Budha","Богомила Пенева",""],
+      [6,"12:00","13:00","Дихателни практики за презареждане (breathwork)","Chandra","Явор Пинев",""],
+      [6,"12:15","13:15","Йога за всеки","Surya","Илиана",""],
+      [6,"13:15","14:15","Йога и релаксация","Surya","Доротея Чешанкова",""],
+      [6,"14:00","15:00","Хатха йога","Budha","Вики Златанова",""],
+      [6,"15:00","16:00","Виняса флоу","Surya","Летисиа Димитрова","На 04.10 ще води…"],
+      [6,"15:30","16:30","Йога за начинаещи","Surya","Яна Здравкова","На 04.10 ще води…"],
+      [6,"15:30","16:30","Йога за деца","Budha","Вики Златанова",""],
+      [6,"17:00","18:00","Пилатес","Surya","Боряна Петрова",""]
+    ];
+
+    const minutes = value => {
+      const [hour, minute] = value.split(":").map(Number);
+      return hour * 60 + minute;
+    };
+    const formatTime = value =>
+      `${String(Math.floor(value / 60)).padStart(2,"0")}:${String(value % 60).padStart(2,"0")}`;
+
+    const daysRow = document.querySelector("#days-row");
+    const calendarBody = document.querySelector("#calendar-body");
+    daysRow.insertAdjacentHTML("beforeend", '<th class="day" scope="col">Час</th>');
+    days.forEach(([day, date]) => daysRow.insertAdjacentHTML("beforeend", `<th class="day" scope="col">${day}<small>${date}</small></th>`));
+
+    for (let start = 7 * 60; start < 21 * 60; start += 60) {
+      const end = start + 60;
+      const half = start + 30;
+      const label = formatTime(start);
+      const row = document.createElement("tr");
+      row.insertAdjacentHTML("beforeend", `<th class="time" scope="row">${label}</th>`);
+
+      days.forEach((_, dayIndex) => {
+        const overlapping = schedule.filter(item =>
+          item[0] === dayIndex && minutes(item[1]) < end && minutes(item[2]) > start
+        );
+        const active = overlapping.filter(item => !item[7]);
+        const roomIsFree = (room, from, to) => !active.some(item =>
+          item[4] === room && minutes(item[1]) < to && minutes(item[2]) > from
+        );
+        const fullHourRooms = rooms.filter(room => roomIsFree(room, start, end));
+        const fromHalfRooms = rooms.filter(room =>
+          !fullHourRooms.includes(room) && roomIsFree(room, half, end)
+        );
+        const availableCount = fullHourRooms.length + fromHalfRooms.length;
+        const roomText = fullHourRooms.length ? fullHourRooms.join(", ") : "Няма свободна за целия час";
+        const status = fromHalfRooms.length
+          ? `От ${formatTime(half)}: ${fromHalfRooms.join(", ")}`
+          : fullHourRooms.length ? "свободни за целия час" : "всички са заети";
+        const tableCell = document.createElement("td");
+        const button = document.createElement("button");
+        const selectionKey = `${days[dayIndex][1]}-${label}`;
+        button.type = "button";
+        button.className = `slot ${availableCount ? `free-${Math.min(availableCount, 3)}` : "busy"}`;
+        if (selectedSlots.has(selectionKey)) button.classList.add("selected");
+        button.innerHTML = `<span class="rooms">${roomText}</span><span class="status">${status}</span>`;
+        button.setAttribute("aria-label", `${days[dayIndex][0]}, ${label}–${formatTime(end)}: ${roomText}. ${status}`);
+        button.setAttribute("aria-pressed", String(selectedSlots.has(selectionKey)));
+        button.addEventListener("click", () => showDetails(dayIndex, start, fullHourRooms, fromHalfRooms, overlapping, selectionKey, button));
+        tableCell.append(button);
+        row.append(tableCell);
+      });
+      calendarBody.append(row);
+    }
+
+    const dialog = document.querySelector("#details");
+    const selectionToggle = document.querySelector("#selection-toggle");
+    document.querySelector(".close").addEventListener("click", () => dialog.close());
+    dialog.addEventListener("click", event => {
+      if (event.target === dialog) dialog.close();
+    });
+    selectionToggle.addEventListener("click", () => {
+      if (!activeSelection) return;
+      const {key, button} = activeSelection;
+      if (selectedSlots.has(key)) selectedSlots.delete(key);
+      else selectedSlots.add(key);
+      try {
+        localStorage.setItem(SELECTIONS_KEY, JSON.stringify([...selectedSlots]));
+      } catch {
+        // The selection remains active for the current browser session.
+      }
+      const selected = selectedSlots.has(key);
+      button.classList.toggle("selected", selected);
+      button.setAttribute("aria-pressed", String(selected));
+      updateSelectionControl(selected);
+    });
+
+    function updateSelectionControl(selected) {
+      selectionToggle.setAttribute("aria-pressed", String(selected));
+      selectionToggle.textContent = selected ? "Премахни маркировката" : "Маркирай този ден и час";
+    }
+
+    function showDetails(dayIndex, start, fullHourRooms, fromHalfRooms, overlapping, selectionKey, button) {
+      const startLabel = formatTime(start);
+      const halfLabel = formatTime(start + 30);
+      const endLabel = formatTime(start + 60);
+      activeSelection = {key:selectionKey, button};
+      updateSelectionControl(selectedSlots.has(selectionKey));
+      document.querySelector("#details-title").textContent =
+        `${days[dayIndex][0]} ${days[dayIndex][1]} · ${startLabel}–${endLabel}`;
+      const availability = [];
+      if (fullHourRooms.length) availability.push(`Цял час: ${fullHourRooms.join(", ")}`);
+      if (fromHalfRooms.length) availability.push(`От ${halfLabel}: ${fromHalfRooms.join(", ")}`);
+      document.querySelector("#details-free").textContent =
+        availability.length ? availability.join(" · ") : "Няма свободна зала.";
+      const list = document.querySelector("#details-classes");
+      list.innerHTML = overlapping.length ? overlapping.map(item => `
+        <li class="${item[7] ? "cancelled" : ""}">
+          <strong>${item[1]}–${item[2]} · ${item[4]}</strong> — ${item[3]}<br>
+          ${item[5]} ${item[6] ? `<span class="note">· ${item[6]}</span>` : ""}
+        </li>`).join("") : "<li>Няма класове в този часови диапазон.</li>";
+      dialog.showModal();
+    }
+  </script>
+</body>
+</html>
